@@ -1,6 +1,6 @@
 # How it works
 
-Everything on the canvas is a body with a mass, a position and a velocity. The star sits in the middle with a large mass; each planet you throw is a smaller body. The only rule is Newton's law of gravitation, applied between every pair of bodies, 240 times per second.
+Everything on the plate is a body with a mass, a position and a velocity. The star sits in the middle with a large mass; each planet you throw is a smaller body. The only rule is Newton's law of gravitation, applied between every pair of bodies, 240 times per second.
 
 ## Gravity
 
@@ -26,15 +26,15 @@ $$
 
 with a fixed step of $h = 1/240$ s. This is only slightly more work than the obvious method (move, then update the velocity with the old acceleration), but it makes a big difference. The obvious method adds a little energy every step, so orbits spiral outward. Verlet is symplectic: its energy error stays inside a small band forever instead of growing. That is why an orbit here stays the same size for minutes.
 
-The number under the canvas is the check on this. It compares the total energy, kinetic plus potential, with what it was the last time you added or removed a body. With Verlet it wobbles in the fourth decimal place and comes back.
+The reading beneath the plate is the check on this. It compares the total energy, kinetic plus potential, with what it was the last time you added or removed a body. With Verlet it wobbles in the fourth decimal place and comes back.
 
 ## Softening
 
-Two point masses that pass very close feel an enormous force, and no fixed step can follow it. To keep that from throwing planets across the screen, the distance in the force law is replaced by $\sqrt{r^2 + \varepsilon^2}$ with $\varepsilon$ set to 6 pixels. Far apart, nothing changes; closer than a few pixels, the force stops growing. The energy readout uses the same softened potential, so it stays consistent.
+Two point masses that pass very close feel an enormous force, and no fixed step can follow it. To keep that from throwing planets off the plate, the distance in the force law is replaced by $\sqrt{r^2 + \varepsilon^2}$ with $\varepsilon$ set to 6 pixels. Far apart, nothing changes; closer than a few pixels, the force stops growing. The energy readout uses the same softened potential, so it stays consistent.
 
 ## The curve you see while aiming
 
-The curve drawn while you drag is not a guess, and it is not the simulation run ahead in fast forward. It is the orbit itself, solved in closed form.
+The blue curve drawn while you drag is not a guess, and it is not the simulation run ahead in fast forward. It is the orbit itself, solved in closed form. Blue is used for it and for nothing else on the page: black ink is what has happened, and blue is what has only been worked out.
 
 Around a single mass, a body's path is always a conic section with that mass at one focus: a circle, an ellipse, a parabola or a hyperbola, and nothing else. So the entire orbit follows from where the planet is and how fast it is going at the moment of release. From the position $\mathbf{r}$ and velocity $\mathbf{v}$ relative to the star, with $\mu = G(M + m)$, the energy per unit mass is
 
@@ -64,9 +64,19 @@ and that is the number shown next to the planet as you aim. Throw it and count: 
 
 This is exact when the star is the only thing pulling, which is the usual case, since a thrown planet is at most a fifth of the star's mass and the others are far lighter still. With several planets in play the drawn ellipse is a very good approximation rather than the truth, and you can watch the real path drift off it over a few orbits. When the throw escapes, there is no closed curve to draw, so the path is integrated forward instead and stops where it would hit something.
 
+## The ink
+
+Each planet lays down a faint mark between where it was last frame and where it is now, and the marks are never taken back. A path travelled again and again darkens, the way a long exposure does.
+
+That makes the plate a record of time rather than of position. Since every frame contributes the same amount of ink to a shorter or longer piece of the path depending on how fast the planet is going, the darkness at any point is a measure of how long the planet spends there. So an elliptical orbit comes out palest at the end nearest the star, where the planet whips through, and darkest at the far end, where it dawdles.
+
+That is Kepler's second law, drawing itself. A planet sweeps out equal areas in equal times, so it must move fastest when it is closest, and the ink is thin exactly where the speed is high. Leave a lopsided orbit running for a minute and the difference between the two ends of the ellipse is plain.
+
+You will also see a single orbit come out as a band of several fine lines rather than one. That is real: the planets pull on each other, so an orbit turns slowly in its own plane instead of retracing itself exactly. The band is precession, drawn.
+
 ## Collisions
 
-Two bodies that overlap merge into one. The new body gets the combined mass and the mass-weighted average velocity, so momentum is conserved. Energy is not, just as in a real inelastic collision, and the readout shows the drop. Anything that flies well off the canvas is removed.
+Two bodies that overlap merge into one. The new body gets the combined mass and the mass-weighted average velocity, so momentum is conserved. Energy is not, just as in a real inelastic collision, and the readout shows the drop. Anything that flies well off the plate is removed.
 
 ## Things to try
 
@@ -74,5 +84,6 @@ Two bodies that overlap merge into one. The new body gets the combined mass and 
 - Watch the label rather than the curve. Find the throw that gives a five second orbit, let go, and count it out.
 - Turn the mass up and throw a heavy planet. The star is not nailed down, so it starts to wobble, and with several planets in play the drawn ellipse stops matching what actually happens.
 - Aim straight at the star. There is no orbit to draw, so you get the path instead, ending where it lands.
+- Throw one very lopsided orbit and leave it for a minute, then look at the two ends of the ellipse. The far end is visibly darker, because that is where the planet is slowest.
 
 Reference: Feynman, *Lectures on Physics* Vol. I, chapter 9, which works out planetary motion numerically by hand, and the [Wikipedia article on Verlet integration](https://en.wikipedia.org/wiki/Verlet_integration).

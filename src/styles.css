@@ -1,19 +1,22 @@
 /*
-  One continuous night: the sky fills the first screen and the writing sits on
-  the same black below it, so the page never leaves space. The star is the only
-  bright thing anywhere — planets, rules and type are all held below it.
+  A leaf from a monograph. The plate sits full measure across the page and the
+  prose runs in a narrower column beneath it, leaving the wide margin a
+  scholarly page has.
+
+  Two marks and no more: ink for what has happened, and one drafting blue for
+  what has only been worked out. Nothing else is coloured.
 */
 
 :root {
-  --sky: #000;
-  --ink: #efe9dc; /* warm ivory, like starlight on paper */
-  --ink-body: #d6cfc0;
-  --ink-dim: #8d8779;
-  --ink-faint: #565248;
-  --gold: #ffcf6e; /* the star */
-  --rule: rgba(239, 233, 220, 0.13);
-  --serif: 'Newsreader', 'Iowan Old Style', Palatino, Georgia, serif;
-  color-scheme: dark;
+  --paper: #e9e6dc;
+  --ink: #191712;
+  --ink-soft: #4f4b42;
+  --ink-faint: #857f73;
+  --rule: rgba(25, 23, 18, 0.22);
+  --rule-soft: rgba(25, 23, 18, 0.12);
+  --blue: #2c5aa0;
+  --serif: 'EB Garamond', 'Iowan Old Style', Palatino, Georgia, serif;
+  color-scheme: light;
 }
 
 * {
@@ -21,152 +24,153 @@
 }
 
 html {
-  background: var(--sky);
+  background: var(--paper);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--sky);
-  color: var(--ink-body);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 300;
-  line-height: 1.7;
+  font-size: 20px;
+  line-height: 1.62;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: rgba(255, 207, 110, 0.24);
-  color: var(--ink);
+  background: rgba(44, 90, 160, 0.18);
 }
 
 :focus-visible {
-  outline: 1px solid var(--gold);
+  outline: 1.5px solid var(--blue);
   outline-offset: 3px;
 }
 
-/* ── The sky ──────────────────────────────────────────────────────────────
-   Sized just under the viewport so the top of the writing shows underneath,
-   which is the only invitation to scroll the page needs. */
-
-.sky {
-  position: relative;
-  height: 90svh;
-  min-height: 460px;
+.page {
+  max-width: 58rem;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 3.75rem) clamp(1.1rem, 4vw, 2.5rem) 5rem;
 }
 
-#space {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  touch-action: none;
-  cursor: crosshair;
+/* The measure the prose is set to. The plate is wider than this on purpose. */
+.masthead,
+.doc,
+footer {
+  max-width: 38rem;
 }
+
+/* ── Masthead ─────────────────────────────────────────────────────────────*/
 
 .masthead {
-  position: absolute;
-  top: clamp(28px, 5vh, 60px);
-  left: clamp(20px, 5vw, 72px);
-  right: clamp(20px, 5vw, 72px);
-  pointer-events: none;
+  margin-bottom: 1.5rem;
 }
 
 .masthead h1 {
   margin: 0;
-  font-size: clamp(3.4rem, 9vw, 7rem);
-  font-weight: 200;
-  line-height: 0.92;
-  letter-spacing: -0.03em;
-  color: var(--ink);
+  font-size: clamp(2.6rem, 6vw, 4.1rem);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.005em;
 }
 
 .masthead p {
-  margin: 0.7rem 0 0;
-  max-width: 34ch;
-  font-size: clamp(1rem, 1.6vw, 1.2rem);
-  font-weight: 300;
-  line-height: 1.5;
-  color: var(--ink-dim);
+  margin: 0.45rem 0 0;
+  font-style: italic;
+  font-size: clamp(1.05rem, 2vw, 1.28rem);
+  color: var(--ink-soft);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .masthead h1,
-  .masthead p {
-    animation: rise 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-  .masthead p {
-    animation-delay: 0.14s;
-  }
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(0.5rem);
-    }
-  }
+/* ── The plate ────────────────────────────────────────────────────────────*/
+
+.plate {
+  margin: 0 0 3.25rem;
 }
 
-/* ── The bezel ────────────────────────────────────────────────────────────
-   Controls read as markings along the bottom edge of an instrument: text and
-   one hairline, no panel, no pills. Gaps pass drags through to the sky. */
+.frame {
+  position: relative;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+}
 
-.bar {
+/* Paper has a tooth. This is the only texture anywhere on the page. */
+.frame::after {
+  content: '';
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.055;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+#space {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+figcaption {
+  margin-top: 0.7rem;
+}
+
+.legend {
+  margin: 0;
+  max-width: 44rem;
+  font-style: italic;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+/* ── Controls, set along a rule like the markings on an instrument ────────*/
+
+.controls {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.55rem 1.6rem;
-  padding: 0.85rem clamp(20px, 5vw, 72px) 1rem;
-  border-top: 1px solid var(--rule);
-  font-size: 0.95rem;
-  color: var(--ink-dim);
-  pointer-events: none;
+  align-items: baseline;
+  gap: 0.4rem 1.5rem;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 0.92rem;
+  color: var(--ink-soft);
 }
 
-.bar > * {
-  pointer-events: auto;
-}
-
-.bar label {
-  cursor: pointer;
-}
-
-.bar .check {
+.control,
+.controls label {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.bar input[type='range'] {
-  width: 116px;
-  accent-color: var(--gold);
-  cursor: pointer;
-  vertical-align: middle;
-}
-
-.bar input[type='checkbox'] {
-  accent-color: var(--gold);
   cursor: pointer;
 }
 
-.bar button {
+.controls input[type='range'] {
+  width: 108px;
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.controls input[type='checkbox'] {
+  accent-color: var(--ink);
+  cursor: pointer;
+}
+
+.controls button {
   font: inherit;
   padding: 0;
   border: 0;
-  background: none;
-  color: var(--ink-dim);
-  cursor: pointer;
   border-bottom: 1px solid var(--rule);
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
 
-.bar button:hover {
+.controls button:hover {
   color: var(--ink);
   border-bottom-color: var(--ink);
 }
@@ -174,50 +178,40 @@ body {
 /* Figures line up as they change, the way a readout should. */
 .reading {
   font-variant-numeric: tabular-nums lining-nums;
-  color: var(--ink-dim);
 }
 
-.bar .status {
+.controls .tally {
   margin-left: auto;
   color: var(--ink-faint);
 }
 
-/* ── The writing ──────────────────────────────────────────────────────────*/
-
-main {
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 3rem clamp(20px, 5vw, 72px) 6rem;
-}
+/* ── The prose ────────────────────────────────────────────────────────────*/
 
 .doc h1 {
-  margin: 0 0 1.4rem;
-  font-size: clamp(1.9rem, 4vw, 2.4rem);
-  font-weight: 300;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--ink);
+  margin: 0 0 1.1rem;
+  font-size: 1.75rem;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .doc h2 {
-  margin: 2.8rem 0 0.7rem;
-  font-size: 1.3rem;
-  font-weight: 400;
-  line-height: 1.25;
-  color: var(--ink);
+  margin: 2.4rem 0 0.55rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .doc p {
-  margin: 0 0 1.1rem;
+  margin: 0 0 1rem;
 }
 
 .doc ul {
-  margin: 0 0 1.1rem;
-  padding-left: 1.15rem;
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
 }
 
 .doc li {
-  margin: 0.45rem 0;
+  margin: 0.4rem 0;
 }
 
 .doc li::marker {
@@ -225,8 +219,7 @@ main {
 }
 
 .doc strong {
-  font-weight: 500;
-  color: var(--ink);
+  font-weight: 600;
 }
 
 .doc em {
@@ -235,64 +228,54 @@ main {
 
 .doc code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.85em;
-  color: var(--ink);
+  font-size: 0.82em;
 }
 
 .doc a,
 footer a {
   color: inherit;
   text-decoration: underline;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 0.5px;
   text-decoration-color: var(--ink-faint);
-  text-underline-offset: 0.22em;
-  transition: text-decoration-color 0.15s;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 0.15s, color 0.15s;
 }
 
 .doc a:hover,
 footer a:hover {
-  text-decoration-color: var(--gold);
+  color: var(--blue);
+  text-decoration-color: var(--blue);
 }
 
-/* Maths sits slightly brighter than the prose, as the thing being pointed at. */
 .doc .katex {
-  font-size: 1.03em;
-  color: var(--ink);
+  font-size: 1.02em;
 }
 
 .doc .katex-display {
-  margin: 1.3rem 0 1.5rem;
-  padding: 0.1rem 0;
+  margin: 1.15rem 0 1.35rem;
   overflow-x: auto;
   overflow-y: hidden;
 }
 
 footer {
-  margin-top: 4rem;
-  padding-top: 1.2rem;
-  border-top: 1px solid var(--rule);
-  font-size: 0.95rem;
-  color: var(--ink-dim);
+  margin-top: 3.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule-soft);
+  font-size: 0.92rem;
+  color: var(--ink-soft);
 }
 
-@media (max-width: 620px) {
+@media (max-width: 640px) {
   body {
-    font-size: 17px;
+    font-size: 18px;
   }
-  .sky {
-    height: 88svh;
+  #space {
+    aspect-ratio: 1 / 1;
   }
-  .masthead p {
-    max-width: 28ch;
+  .controls {
+    gap: 0.45rem 1.1rem;
   }
-  .bar {
-    gap: 0.5rem 1.1rem;
-    font-size: 0.9rem;
-  }
-  .bar input[type='range'] {
-    width: 92px;
-  }
-  .bar .status {
+  .controls .tally {
     margin-left: 0;
     width: 100%;
   }

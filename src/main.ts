@@ -19,9 +19,9 @@ const applyMass = () => {
 massInput.addEventListener('input', applyMass);
 applyMass();
 
-const trails = $<HTMLInputElement>('#trails');
-trails.addEventListener('change', () => (sandbox.trails = trails.checked));
-sandbox.trails = trails.checked;
+const ink = $<HTMLInputElement>('#ink');
+ink.addEventListener('change', () => (sandbox.inking = ink.checked));
+sandbox.inking = ink.checked;
 
 const pause = $<HTMLButtonElement>('#pause');
 pause.addEventListener('click', () => {

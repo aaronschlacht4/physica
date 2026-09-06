@@ -1,10 +1,12 @@
 /**
- * The sandbox: a star, and planets you throw at it. Owns the canvas, the frame
- * loop and pointer input; the maths lives in physics.ts.
+ * The plate: a star, and planets you throw at it, each one inking its path
+ * onto the page as it goes.
  *
- * While you aim, the orbit you would get is drawn whole, solved from its
- * orbital elements rather than integrated forward, so the complete ellipse
- * appears at once and changes as you move.
+ * Two kinds of mark are drawn, and the difference is the point. Ink is what
+ * has happened: the traces the planets have actually laid down. The blue is a
+ * construction line, what would happen if you let go now, solved from the
+ * orbital elements rather than integrated forward, so the whole ellipse
+ * appears at once and changes as you aim.
  */
 
 import {
@@ -16,15 +18,23 @@ const STAR_MASS = 5e6;
 const EPS2 = 6 * 6; // softening length of 6 px
 const H = 1 / 240; // physics step, seconds
 const LAUNCH_SCALE = 2; // px/s of speed per px of drag
-const SKY = '#000';
-const SKY_FADE = 'rgba(0, 0, 0, 0.05)'; // how fast trails fade
-const STAR_COLOR = '#ffcf6e';
-const INK = '#efe9dc';
-const STARS = 260; // faint background stars
 
-// Muted planetary tones: ice, rust, sand, sage, dust, copper. Nothing here is
-// as bright as the star, so the star stays the only light in the picture.
-const PLANET_COLORS = ['#a9c9e8', '#c8795a', '#d8c8a2', '#9db79b', '#a99ac3', '#d8a066'];
+const PAPER = '#e9e6dc';
+const INK = '#191712';
+const BLUE = '#2c5aa0';
+const INK_RGB = '25, 23, 18';
+const BLUE_RGB = '44, 90, 160';
+
+/**
+ * How strongly a planet inks the page on each pass. The marks are never taken
+ * back, so a path travelled again and again darkens the way a long exposure
+ * does, and the densest part of the plate is where the planets spend most of
+ * their time. Fading the page back instead would tint it: the correction
+ * rounds differently in each colour channel, and the ink drifts green.
+ */
+const INK_ALPHA = 0.3;
+
+const SPECKS = 190; // faint grain of background stars, dark as on a negative
 
 // Fallback path drawn when the orbit does not close.
 const PATH_STEPS = 1100;
@@ -39,7 +49,8 @@ export interface Stats {
 export class Sandbox {
   /** Mass given to the next planet thrown. */
   mass = 2e4;
-  trails = true;
+  /** Whether the planets leave a trace behind them. */
+  inking = true;
   paused = false;
 
   private canvas: HTMLCanvasElement;
@@ -49,13 +60,14 @@ export class Sandbox {
   private w = 0;
   private h = 0;
   private sys: System = createSystem();
-  private colors: string[] = [];
-  private nextColor = 0;
+  /** Where each body was drawn last frame, so its trace is a line, not a row of dots. */
+  private lastX: number[] = [];
+  private lastY: number[] = [];
   private E0 = 0;
   private accum = 0;
   private last = 0;
   private raf = 0;
-  private layerDirty = true;
+  private wipe = true;
 
   private aiming = false;
   private sx = 0;
@@ -67,7 +79,7 @@ export class Sandbox {
   private path = new Float64Array(PATH_STEPS * 2);
   private pathLen = 0;
 
-  private stars = new Float32Array(STARS * 3);
+  private specks = new Float32Array(SPECKS * 3);
   private observer: ResizeObserver;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -89,37 +101,37 @@ export class Sandbox {
     this.raf = requestAnimationFrame(this.frame);
   }
 
-  /** Remove every planet, leaving the star alone at the centre. */
+  /** Wipe the plate: every planet and every mark, leaving the star alone. */
   clear(): void {
     this.sys.n = 0;
+    this.lastX = [];
+    this.lastY = [];
     addBody(this.sys, 0, 0, 0, 0, STAR_MASS);
-    this.colors = [STAR_COLOR];
-    this.nextColor = 0;
+    this.lastX.push(0);
+    this.lastY.push(0);
     accelerate(this.sys, EPS2);
     this.E0 = energy(this.sys);
-    this.layerDirty = true;
+    this.wipe = true;
   }
 
-  /** The system you arrive to: two planets already going round. */
+  /** The system you arrive to: two planets already drawing. */
   private seed(): void {
     this.clear();
     const circular = (r: number) => Math.sqrt((G * STAR_MASS) / r);
-    // Sized against the smaller side of the canvas so both planets are on
-    // screen on a phone as well as on a desktop.
+    // Sized against the smaller side of the plate so both are on the page at
+    // any shape of screen.
     const R = Math.min(this.w, this.h);
 
-    // A close circular orbit.
-    const r1 = R * 0.22;
+    const r1 = R * 0.2;
     this.spawn(0, -r1, circular(r1), 0, 2.2e4);
 
-    // And a wider one, crossed at less than circular speed so it swings in and
-    // back out. The two are kept well apart so the pair keeps running rather
-    // than colliding while you read.
-    const r2 = R * 0.44;
+    // Crossed at less than circular speed, so this one swings in and back out.
+    const r2 = R * 0.4;
     const v2 = circular(r2) * 0.92;
     const ux = 0.94;
-    const uy = 0.34; // a unit vector, so the planet starts a distance r2 out
+    const uy = 0.34;
     this.spawn(r2 * ux, r2 * uy, -uy * v2, ux * v2, 3.4e4);
+
     // Take out the small net drift the planets give the system.
     let px = 0;
     let py = 0;
@@ -139,7 +151,17 @@ export class Sandbox {
 
   private spawn(x: number, y: number, vx: number, vy: number, m: number): void {
     addBody(this.sys, x, y, vx, vy, m);
-    this.colors.push(PLANET_COLORS[this.nextColor++ % PLANET_COLORS.length]);
+    this.lastX.push(x);
+    this.lastY.push(y);
+  }
+
+  /** Mirror the swap physics.removeBody makes, so the trace history follows its body. */
+  private closeSlot(i: number): void {
+    const last = this.sys.n; // already decremented by removeBody
+    this.lastX[i] = this.lastX[last];
+    this.lastY[i] = this.lastY[last];
+    this.lastX.length = last;
+    this.lastY.length = last;
   }
 
   stats(): Stats {
@@ -169,18 +191,18 @@ export class Sandbox {
     }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // A fixed scatter of faint stars, the same every time for a given size.
+    // A fixed scatter, the same every time for a given size.
     let seed = 20260906;
     const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
-    for (let i = 0; i < STARS; i++) {
-      this.stars[3 * i] = rand() * this.w;
-      this.stars[3 * i + 1] = rand() * this.h;
-      this.stars[3 * i + 2] = 0.06 + rand() * rand() * 0.44;
+    for (let i = 0; i < SPECKS; i++) {
+      this.specks[3 * i] = rand() * this.w;
+      this.specks[3 * i + 1] = rand() * this.h;
+      this.specks[3 * i + 2] = 0.05 + rand() * rand() * 0.3;
     }
-    this.layerDirty = true;
+    this.wipe = true;
   }
 
-  /** World coordinates put the origin at the centre of the canvas. */
+  /** Plate coordinates put the origin at the centre. */
   private toWorld(e: PointerEvent): [number, number] {
     const rect = this.canvas.getBoundingClientRect();
     return [e.clientX - rect.left - this.w / 2, e.clientY - rect.top - this.h / 2];
@@ -228,8 +250,7 @@ export class Sandbox {
   /**
    * Work out the orbit the planet would follow. Around a single star the path
    * is a conic section, so the whole ellipse is known at once from the
-   * position and velocity. When it does not close, or the star is not clearly
-   * in charge, fall back to integrating the path forward.
+   * position and velocity. When it does not close, integrate the path instead.
    */
   private updateAim(): void {
     const s = this.sys;
@@ -322,7 +343,7 @@ export class Sandbox {
     if (steps > 0) this.collide();
   }
 
-  /** Merge bodies that touch; drop bodies that have gone far off screen. */
+  /** Merge bodies that touch; drop bodies that have gone far off the plate. */
   private collide(): void {
     const s = this.sys;
     let changed = false;
@@ -333,8 +354,7 @@ export class Sandbox {
           const keep = s.m[i] >= s.m[j] ? i : j;
           const drop = keep === i ? j : i;
           mergeBodies(s, keep, drop);
-          this.colors[drop] = this.colors[s.n];
-          this.colors.length = s.n;
+          this.closeSlot(drop);
           changed = true;
           j--;
         }
@@ -344,8 +364,7 @@ export class Sandbox {
     for (let i = s.n - 1; i >= 0; i--) {
       if (Math.abs(s.x[i]) > far || Math.abs(s.y[i]) > far) {
         removeBody(s, i);
-        this.colors[i] = this.colors[s.n];
-        this.colors.length = s.n;
+        this.closeSlot(i);
         changed = true;
       }
     }
@@ -362,60 +381,98 @@ export class Sandbox {
     const cx = w / 2;
     const cy = h / 2;
     const s = this.sys;
+    const l = this.lctx;
 
-    // Bodies and their trails live on a layer that is faded a little each
-    // frame; pausing leaves it alone so the picture freezes.
-    if (!this.paused || this.layerDirty) {
-      const l = this.lctx;
-      l.fillStyle = this.trails && !this.layerDirty ? SKY_FADE : SKY;
+    // The plate holds the ink. Nothing is redrawn here, only added to, so the
+    // traces build up the way a long exposure does. Pausing leaves it be.
+    if (this.wipe) {
+      l.fillStyle = PAPER;
       l.fillRect(0, 0, w, h);
-      this.layerDirty = false;
-      // Redrawn every frame so the fade never dims them.
-      for (let i = 0; i < STARS; i++) {
-        l.fillStyle = `rgba(239, 233, 220, ${this.stars[3 * i + 2]})`;
-        l.fillRect(this.stars[3 * i], this.stars[3 * i + 1], 1, 1);
+      for (let i = 0; i < SPECKS; i++) {
+        l.fillStyle = `rgba(${INK_RGB}, ${this.specks[3 * i + 2]})`;
+        l.fillRect(this.specks[3 * i], this.specks[3 * i + 1], 1, 1);
       }
+      this.wipe = false;
+    } else if (!this.paused && this.inking) {
+      l.strokeStyle = `rgba(${INK_RGB}, ${INK_ALPHA})`;
+      l.lineWidth = 1;
+      l.lineCap = 'round';
+      l.beginPath();
+      const star = this.primary();
       for (let i = 0; i < s.n; i++) {
-        const x = cx + s.x[i];
-        const y = cy + s.y[i];
-        const r = radiusFor(s.m[i]);
-        if (i === this.primary()) {
-          const glow = l.createRadialGradient(x, y, r * 0.7, x, y, r * 5);
-          glow.addColorStop(0, 'rgba(255, 207, 110, 0.4)');
-          glow.addColorStop(0.45, 'rgba(255, 175, 80, 0.09)');
-          glow.addColorStop(1, 'rgba(255, 160, 70, 0)');
-          l.fillStyle = glow;
-          l.beginPath();
-          l.arc(x, y, r * 5, 0, Math.PI * 2);
-          l.fill();
-        }
-        l.fillStyle = this.colors[i];
-        l.beginPath();
-        l.arc(x, y, r, 0, Math.PI * 2);
-        l.fill();
+        if (i === star) continue;
+        l.moveTo(cx + this.lastX[i], cy + this.lastY[i]);
+        l.lineTo(cx + s.x[i], cy + s.y[i]);
+      }
+      l.stroke();
+    }
+    // Kept current even while the pen is up, so switching the ink back on does
+    // not draw a line across the gap.
+    if (!this.paused) {
+      for (let i = 0; i < s.n; i++) {
+        this.lastX[i] = s.x[i];
+        this.lastY[i] = s.y[i];
       }
     }
 
     const g = this.ctx;
-    g.fillStyle = SKY;
-    g.fillRect(0, 0, w, h);
     g.drawImage(this.layer, 0, 0, w, h);
+
+    // The bodies sit on top of the ink rather than in it, so they stay crisp.
+    for (let i = 0; i < s.n; i++) {
+      const x = cx + s.x[i];
+      const y = cy + s.y[i];
+      const r = radiusFor(s.m[i]);
+      if (i === this.primary()) {
+        // The Sun, drawn as its own symbol: a circle about a point.
+        g.strokeStyle = INK;
+        g.lineWidth = 1.25;
+        g.beginPath();
+        g.arc(x, y, r, 0, Math.PI * 2);
+        g.stroke();
+        g.fillStyle = INK;
+        g.beginPath();
+        g.arc(x, y, Math.max(1.6, r * 0.28), 0, Math.PI * 2);
+        g.fill();
+      } else {
+        g.fillStyle = INK;
+        g.beginPath();
+        g.arc(x, y, Math.max(1.7, r), 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+
     if (this.aiming) this.drawAim(g, cx, cy);
   }
 
   private drawAim(g: CanvasRenderingContext2D, cx: number, cy: number): void {
     const s = this.sys;
     const p = this.primary();
+    const fx = cx + s.x[p];
+    const fy = cy + s.y[p];
 
-    // The orbit itself: one continuous curve, drawn whole.
-    g.strokeStyle = 'rgba(239, 233, 220, 0.5)';
-    g.lineWidth = 1;
     if (this.orbit) {
       const o = this.orbit;
+      // The major axis, dashed through the star, which shows that the star
+      // sits at a focus of the ellipse and not at its centre.
+      g.save();
+      g.setLineDash([4, 5]);
+      g.strokeStyle = `rgba(${BLUE_RGB}, 0.42)`;
+      g.lineWidth = 1;
       g.beginPath();
-      g.ellipse(cx + s.x[p] + o.cx, cy + s.y[p] + o.cy, o.a, o.b, o.argp, 0, Math.PI * 2);
+      g.moveTo(fx + o.cx + o.a * Math.cos(o.argp), fy + o.cy + o.a * Math.sin(o.argp));
+      g.lineTo(fx + o.cx - o.a * Math.cos(o.argp), fy + o.cy - o.a * Math.sin(o.argp));
+      g.stroke();
+      g.restore();
+
+      g.strokeStyle = BLUE;
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.ellipse(fx + o.cx, fy + o.cy, o.a, o.b, o.argp, 0, Math.PI * 2);
       g.stroke();
     } else {
+      g.strokeStyle = BLUE;
+      g.lineWidth = 1.1;
       g.beginPath();
       for (let k = 0; k < this.pathLen; k++) {
         const x = cx + this.path[2 * k];
@@ -426,28 +483,33 @@ export class Sandbox {
       g.stroke();
     }
 
-    // The aim: a hairline from the planet to the pointer.
-    g.strokeStyle = 'rgba(239, 233, 220, 0.28)';
+    // The aim, and the planet not yet let go of: open, because it has not
+    // drawn anything yet.
+    g.strokeStyle = `rgba(${BLUE_RGB}, 0.55)`;
+    g.lineWidth = 1;
     g.beginPath();
     g.moveTo(cx + this.sx, cy + this.sy);
     g.lineTo(cx + this.px, cy + this.py);
     g.stroke();
 
-    // The planet, waiting to be let go.
-    g.fillStyle = INK;
+    const r = Math.max(2.6, radiusFor(this.mass));
+    g.fillStyle = PAPER;
     g.beginPath();
-    g.arc(cx + this.sx, cy + this.sy, radiusFor(this.mass), 0, Math.PI * 2);
+    g.arc(cx + this.sx, cy + this.sy, r, 0, Math.PI * 2);
     g.fill();
+    g.strokeStyle = BLUE;
+    g.lineWidth = 1.25;
+    g.stroke();
 
     if (this.note) {
-      g.font = '15px Newsreader, Georgia, serif';
-      g.fillStyle = 'rgba(239, 233, 220, 0.75)';
+      // Annotations on a plate are set in italic, as an engraver would.
+      g.font = 'italic 15px "EB Garamond", Georgia, serif';
+      g.fillStyle = BLUE;
       g.textBaseline = 'middle';
-      const r = radiusFor(this.mass);
-      const right = cx + this.sx + r + 10;
-      const fits = right + g.measureText(this.note).width < this.w - 12;
+      const right = cx + this.sx + r + 9;
+      const fits = right + g.measureText(this.note).width < this.w - 10;
       g.textAlign = fits ? 'left' : 'right';
-      g.fillText(this.note, fits ? right : cx + this.sx - r - 10, cy + this.sy - r - 9);
+      g.fillText(this.note, fits ? right : cx + this.sx - r - 9, cy + this.sy - r - 9);
     }
   }
 }
