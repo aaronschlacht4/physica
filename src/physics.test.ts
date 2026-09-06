@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createSystem, addBody, accelerate, step, energy, momentum, mergeBodies } from './physics';
+import { createSystem, addBody, accelerate, step, energy, momentum, mergeBodies, orbitAround } from './physics';
 
 const EPS2 = 36;
 
@@ -51,6 +51,68 @@ describe('velocity Verlet', () => {
     const [px, py] = momentum(s);
     expect(px).toBeCloseTo(px0, 6);
     expect(py).toBeCloseTo(py0, 6);
+  });
+});
+
+describe('orbitAround', () => {
+  const MU = 5e6;
+
+  it('reads a circular orbit as a circle of the right size and period', () => {
+    const r = 200;
+    const o = orbitAround(MU, r, 0, 0, Math.sqrt(MU / r))!;
+    expect(o.kind).toBe('ellipse');
+    expect(o.e).toBeCloseTo(0, 9);
+    expect(o.a).toBeCloseTo(r, 6);
+    expect(o.b).toBeCloseTo(r, 6);
+    expect(o.period).toBeCloseTo(2 * Math.PI * Math.sqrt(r ** 3 / MU), 6);
+  });
+
+  it('calls anything at or above escape velocity an escape', () => {
+    const r = 200;
+    const vEsc = Math.sqrt((2 * MU) / r);
+    expect(orbitAround(MU, r, 0, 0, vEsc)!.kind).toBe('escape');
+    expect(orbitAround(MU, r, 0, 0, vEsc * 1.2)!.kind).toBe('escape');
+    expect(orbitAround(MU, r, 0, 0, vEsc * 0.99)!.kind).toBe('ellipse');
+  });
+
+  it('puts closest approach opposite the launch point for a slow throw', () => {
+    // Thrown from +x at less than circular speed, so it falls inward and
+    // comes closest on the far side of the star.
+    const r = 200;
+    const o = orbitAround(MU, r, 0, 0, Math.sqrt(MU / r) * 0.7)!;
+    expect(o.kind).toBe('ellipse');
+    expect(o.e).toBeGreaterThan(0);
+    expect(Math.abs(o.argp)).toBeCloseTo(Math.PI, 6); // periapsis at −x
+    expect(o.periapsis).toBeLessThan(r);
+    expect(o.a).toBeLessThan(r);
+  });
+
+  it('agrees with the integrator: the body returns after one period', () => {
+    const r = 200;
+    const v = Math.sqrt(MU / r) * 0.8; // a definite ellipse
+    const o = orbitAround(MU, r, 0, 0, v)!;
+
+    // A test particle around a star heavy enough to stay put.
+    const s = createSystem();
+    addBody(s, 0, 0, 0, 0, MU);
+    addBody(s, r, 0, 0, v, 1e-6);
+    accelerate(s, 0);
+    const h = 1 / 2000;
+    const steps = Math.round(o.period / h);
+    for (let i = 0; i < steps; i++) step(s, h, 0);
+    expect(Math.hypot(s.x[1] - r, s.y[1])).toBeLessThan(r * 0.01);
+  });
+
+  it('measures the predicted extremes correctly', () => {
+    const r = 200;
+    const o = orbitAround(MU, r, 0, 0, Math.sqrt(MU / r) * 0.8)!;
+    // Launched at less than circular speed, the launch point is the far point.
+    expect(o.a * (1 + o.e)).toBeCloseTo(r, 6);
+    expect(o.periapsis).toBeCloseTo(o.a * (1 - o.e), 9);
+  });
+
+  it('returns null at the centre', () => {
+    expect(orbitAround(MU, 0, 0, 10, 10)).toBeNull();
   });
 });
 

@@ -32,9 +32,37 @@ The number under the canvas is the check on this. It compares the total energy, 
 
 Two point masses that pass very close feel an enormous force, and no fixed step can follow it. To keep that from throwing planets across the screen, the distance in the force law is replaced by $\sqrt{r^2 + \varepsilon^2}$ with $\varepsilon$ set to 6 pixels. Far apart, nothing changes; closer than a few pixels, the force stops growing. The energy readout uses the same softened potential, so it stays consistent.
 
-## The dotted line
+## The curve you see while aiming
 
-While you drag, the dotted line shows where the planet would go. It runs the same integrator ahead for fifteen seconds on a test particle, with every existing body held still. That is exact when only the star is there and a good guess otherwise, since the planets are light and slow compared to the throw. The line stops if the path would hit a body.
+The curve drawn while you drag is not a guess, and it is not the simulation run ahead in fast forward. It is the orbit itself, solved in closed form.
+
+Around a single mass, a body's path is always a conic section with that mass at one focus: a circle, an ellipse, a parabola or a hyperbola, and nothing else. So the entire orbit follows from where the planet is and how fast it is going at the moment of release. From the position $\mathbf{r}$ and velocity $\mathbf{v}$ relative to the star, with $\mu = G(M + m)$, the energy per unit mass is
+
+$$
+\varepsilon = \frac{v^2}{2} - \frac{\mu}{r}
+$$
+
+Its sign settles the question immediately. Negative and the orbit closes; zero or positive and the planet never comes back. When it does close, the size of the ellipse is
+
+$$
+a = -\frac{\mu}{2\varepsilon}
+$$
+
+which depends only on the speed and the distance, not on the direction. The shape and orientation come from the eccentricity vector, which points from the star toward the closest point of the orbit and has length equal to the eccentricity:
+
+$$
+\mathbf{e} = \frac{(v^2 - \mu/r)\,\mathbf{r} - (\mathbf{r}\cdot\mathbf{v})\,\mathbf{v}}{\mu}
+$$
+
+With $a$, $e$ and that direction, the ellipse is fully determined, so the whole thing is drawn in one stroke. The period follows from Kepler's third law,
+
+$$
+T = 2\pi\sqrt{\frac{a^3}{\mu}}
+$$
+
+and that is the number shown next to the planet as you aim. Throw it and count: the planet comes back when the label said it would.
+
+This is exact when the star is the only thing pulling, which is the usual case, since a thrown planet is at most a fifth of the star's mass and the others are far lighter still. With several planets in play the drawn ellipse is a very good approximation rather than the truth, and you can watch the real path drift off it over a few orbits. When the throw escapes, there is no closed curve to draw, so the path is integrated forward instead and stops where it would hit something.
 
 ## Collisions
 
@@ -42,9 +70,9 @@ Two bodies that overlap merge into one. The new body gets the combined mass and 
 
 ## Things to try
 
-- Throw a planet sideways, at right angles to the star. A drag of about a third of the way to the star gives a nearly circular orbit; shorter dives in and swings out into an ellipse; longer escapes.
-- Turn the mass up and throw a heavy planet. Watch the star move.
-- Put two planets on nearby orbits and wait. They pull each other around and neither orbit stays put.
-- Throw a planet straight at the star. The dotted line ends where it would hit.
+- Aim sideways, at right angles to the star, and lengthen the drag slowly. The ellipse swells and its far end swings around until, at $\sqrt{2}$ times circular speed, it stops closing altogether.
+- Watch the label rather than the curve. Find the throw that gives a five second orbit, let go, and count it out.
+- Turn the mass up and throw a heavy planet. The star is not nailed down, so it starts to wobble, and with several planets in play the drawn ellipse stops matching what actually happens.
+- Aim straight at the star. There is no orbit to draw, so you get the path instead, ending where it lands.
 
 Reference: Feynman, *Lectures on Physics* Vol. I, chapter 9, which works out planetary motion numerically by hand, and the [Wikipedia article on Verlet integration](https://en.wikipedia.org/wiki/Verlet_integration).
