@@ -1,221 +1,357 @@
 /*
-  A leaf from a monograph. The plate sits full measure across the page and the
-  prose runs in a narrower column beneath it, leaving the wide margin a
-  scholarly page has.
+  The page is black because the subject is, and the render fades to black at
+  its edges, so the picture has no frame: it simply is the top of the page.
 
-  Two marks and no more: ink for what has happened, and one drafting blue for
-  what has only been worked out. Nothing else is coloured.
+  There is no accent colour anywhere in the interface. Every colour you see
+  comes out of the physics — the temperature of the disk and the colour of the
+  stars — and nothing competes with it.
+
+  Spectral carries the prose. Archivo carries the instrument: dial names,
+  figures, telemetry.
 */
 
 :root {
-  --paper: #e9e6dc;
-  --ink: #191712;
-  --ink-soft: #4f4b42;
-  --ink-faint: #857f73;
-  --rule: rgba(25, 23, 18, 0.22);
-  --rule-soft: rgba(25, 23, 18, 0.12);
-  --blue: #2c5aa0;
-  --serif: 'EB Garamond', 'Iowan Old Style', Palatino, Georgia, serif;
-  color-scheme: light;
+  --void: #000;
+  --star: #e9e7e2;
+  --dim: #9a978f;
+  --faint: #605d57;
+  --rule: rgba(233, 231, 226, 0.14);
+  --rule-soft: rgba(233, 231, 226, 0.08);
+  --serif: 'Spectral', 'Iowan Old Style', Georgia, serif;
+  --sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* A class that sets `display` outranks the `hidden` attribute, which is only
+   `display: none` from the user-agent sheet. Without this the hidden fallback
+   panel covers the render. */
+[hidden] {
+  display: none !important;
+}
+
 html {
-  background: var(--paper);
+  background: var(--void);
   -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--void);
+  color: var(--star);
   font-family: var(--serif);
-  font-size: 20px;
-  line-height: 1.62;
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.68;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: rgba(44, 90, 160, 0.18);
+  background: rgba(233, 231, 226, 0.22);
 }
 
 :focus-visible {
-  outline: 1.5px solid var(--blue);
+  outline: 1px solid var(--star);
   outline-offset: 3px;
 }
 
-.page {
-  max-width: 58rem;
-  margin: 0 auto;
-  padding: clamp(2rem, 5vw, 3.75rem) clamp(1.1rem, 4vw, 2.5rem) 5rem;
-}
+/* ── The render ───────────────────────────────────────────────────────────*/
 
-/* The measure the prose is set to. The plate is wider than this on purpose. */
-.masthead,
-.doc,
-footer {
-  max-width: 38rem;
-}
-
-/* ── Masthead ─────────────────────────────────────────────────────────────*/
-
-.masthead {
-  margin-bottom: 1.5rem;
-}
-
-.masthead h1 {
-  margin: 0;
-  font-size: clamp(2.6rem, 6vw, 4.1rem);
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.005em;
-}
-
-.masthead p {
-  margin: 0.45rem 0 0;
-  font-style: italic;
-  font-size: clamp(1.05rem, 2vw, 1.28rem);
-  color: var(--ink-soft);
-}
-
-/* ── The plate ────────────────────────────────────────────────────────────*/
-
-.plate {
-  margin: 0 0 3.25rem;
-}
-
-.frame {
+.view {
   position: relative;
-  border: 1px solid var(--rule);
-  background: var(--paper);
+  width: 100%;
+  height: 86svh;
+  min-height: 420px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
 }
 
-/* Paper has a tooth. This is the only texture anywhere on the page. */
-.frame::after {
-  content: '';
+.view.is-dragging {
+  cursor: grabbing;
+}
+
+.view canvas {
   position: absolute;
   inset: 0;
-  pointer-events: none;
-  opacity: 0.055;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-#space {
-  display: block;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  touch-action: none;
-  cursor: crosshair;
+  height: 100%;
+  display: block;
 }
 
-figcaption {
-  margin-top: 0.7rem;
+#overlay {
+  pointer-events: none;
 }
 
-.legend {
+.title {
+  position: absolute;
+  top: clamp(22px, 4.5vh, 52px);
+  left: clamp(20px, 4vw, 60px);
+  max-width: 30rem;
+  pointer-events: none;
+  /* The disk swings through this corner as the camera moves, so the type
+     carries its own shade rather than trusting the picture to stay dark. */
+  padding: 30px 96px 44px 30px;
+  margin: -30px 0 0 -30px;
+  background: radial-gradient(132% 122% at 0% 0%, rgba(0, 0, 0, 0.94) 0%, rgba(0, 0, 0, 0.76) 30%, rgba(0, 0, 0, 0.34) 58%, rgba(0, 0, 0, 0) 82%);
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.7);
+}
+
+.title h1 {
   margin: 0;
-  max-width: 44rem;
-  font-style: italic;
-  font-size: 0.92rem;
-  line-height: 1.5;
-  color: var(--ink-soft);
+  font-size: clamp(2rem, 4.6vw, 3.4rem);
+  font-weight: 300;
+  line-height: 1.06;
+  letter-spacing: -0.018em;
 }
 
-/* ── Controls, set along a rule like the markings on an instrument ────────*/
+.title p {
+  margin: 0.7rem 0 0;
+  max-width: 21rem;
+  font-size: clamp(0.95rem, 1.5vw, 1.05rem);
+  line-height: 1.5;
+  color: var(--dim);
+}
 
-.controls {
+.fallback {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  height: 100%;
+  text-align: center;
+  color: var(--dim);
+  background: var(--void);
+}
+
+.fallback p {
+  max-width: 34rem;
+}
+
+/* ── The console ──────────────────────────────────────────────────────────*/
+
+.console {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.4rem 1.5rem;
-  margin-top: 0.7rem;
-  padding-top: 0.6rem;
+  align-items: flex-start;
+  gap: 1.4rem 2.6rem;
+  padding: 1.1rem clamp(20px, 4vw, 60px) 1.3rem;
   border-top: 1px solid var(--rule-soft);
-  font-size: 0.92rem;
-  color: var(--ink-soft);
+  font-family: var(--sans);
 }
 
-.control,
-.controls label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.dials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem 2.2rem;
+  flex: 1 1 30rem;
+}
+
+.dial {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0.15rem 0.8rem;
+  min-width: 12rem;
+  flex: 1;
   cursor: pointer;
 }
 
-.controls input[type='range'] {
-  width: 108px;
-  accent-color: var(--ink);
+.dial .name {
+  font-size: 0.84rem;
+  color: var(--star);
+}
+
+/* What the dial means, said once, quietly. */
+.dial .hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--faint);
+}
+
+.num {
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--star);
+}
+
+/* The ends of the travel, so the range is readable without dragging it. */
+.ends {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--faint);
+}
+
+/*
+  A gauge, not a pill: the track is a hairline and the handle a single mark
+  standing on it. The filled part is driven by --t, set from script, because
+  a native range gives no other way to colour the travelled portion.
+*/
+.dial input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 16px;
+  margin: 0.3rem 0 0.1rem;
+  background: transparent;
   cursor: pointer;
 }
 
-.controls input[type='checkbox'] {
-  accent-color: var(--ink);
-  cursor: pointer;
+.dial input[type='range']::-webkit-slider-runnable-track {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    var(--star) 0,
+    var(--star) var(--t, 50%),
+    rgba(233, 231, 226, 0.2) var(--t, 50%),
+    rgba(233, 231, 226, 0.2) 100%
+  );
 }
 
-.controls button {
-  font: inherit;
+.dial input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 3px;
+  height: 15px;
+  margin-top: -7px;
+  border: 0;
+  border-radius: 0;
+  background: var(--star);
+}
+
+.dial input[type='range']::-moz-range-track {
+  height: 1px;
+  background: rgba(233, 231, 226, 0.2);
+}
+
+.dial input[type='range']::-moz-range-progress {
+  height: 1px;
+  background: var(--star);
+}
+
+.dial input[type='range']::-moz-range-thumb {
+  width: 3px;
+  height: 15px;
+  border: 0;
+  border-radius: 0;
+  background: var(--star);
+}
+
+.dial input[type='range']:focus-visible {
+  outline: none;
+}
+
+.dial input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(233, 231, 226, 0.35);
+}
+
+.dial input[type='range']:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px rgba(233, 231, 226, 0.35);
+}
+
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  margin: 0;
   padding: 0;
   border: 0;
-  border-bottom: 1px solid var(--rule);
-  background: none;
-  color: var(--ink-soft);
+}
+
+.toggles legend,
+.readout dt {
+  padding: 0;
+  font-size: 0.72rem;
+  color: var(--faint);
+}
+
+.toggles legend {
+  margin-bottom: 0.42rem;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  color: var(--star);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
 }
 
-.controls button:hover {
-  color: var(--ink);
-  border-bottom-color: var(--ink);
+.check input {
+  accent-color: var(--star);
+  cursor: pointer;
 }
 
-/* Figures line up as they change, the way a readout should. */
-.reading {
+/* Each measurement carries its own name rather than running them together. */
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.36rem;
+  margin: 0;
+}
+
+.readout div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.2rem;
+  min-width: 12rem;
+}
+
+.readout dd {
+  margin: 0;
+  font-size: 0.84rem;
   font-variant-numeric: tabular-nums lining-nums;
+  color: var(--star);
 }
 
-.controls .tally {
-  margin-left: auto;
-  color: var(--ink-faint);
-}
+/* ── The writing ──────────────────────────────────────────────────────────*/
 
-/* ── The prose ────────────────────────────────────────────────────────────*/
+main {
+  max-width: 39rem;
+  margin: 0 auto;
+  padding: 3.5rem clamp(20px, 5vw, 40px) 6rem;
+}
 
 .doc h1 {
   margin: 0 0 1.1rem;
   font-size: 1.75rem;
-  font-weight: 500;
+  font-weight: 300;
   line-height: 1.2;
+  letter-spacing: -0.015em;
 }
 
 .doc h2 {
-  margin: 2.4rem 0 0.55rem;
+  margin: 2.6rem 0 0.6rem;
   font-size: 1.2rem;
   font-weight: 600;
   line-height: 1.3;
 }
 
 .doc p {
-  margin: 0 0 1rem;
+  margin: 0 0 1.05rem;
 }
 
 .doc ul {
-  margin: 0 0 1rem;
-  padding-left: 1.1rem;
+  margin: 0 0 1.05rem;
+  padding-left: 1.15rem;
 }
 
 .doc li {
-  margin: 0.4rem 0;
+  margin: 0.45rem 0;
 }
 
 .doc li::marker {
-  color: var(--ink-faint);
+  color: var(--faint);
 }
 
 .doc strong {
@@ -236,15 +372,46 @@ footer a {
   color: inherit;
   text-decoration: underline;
   text-decoration-thickness: 0.5px;
-  text-decoration-color: var(--ink-faint);
-  text-underline-offset: 0.2em;
-  transition: text-decoration-color 0.15s, color 0.15s;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color 0.15s;
 }
 
 .doc a:hover,
 footer a:hover {
-  color: var(--blue);
-  text-decoration-color: var(--blue);
+  text-decoration-color: var(--star);
+}
+
+/* Figures in the tables are set in the instrument face. */
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1.2rem;
+}
+
+.doc th,
+.doc td {
+  text-align: left;
+  padding: 0.4rem 0.7rem 0.4rem 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.doc thead th {
+  font-size: 0.86rem;
+  font-weight: 600;
+  border-bottom-color: var(--rule);
+}
+
+.doc td:last-child,
+.doc th:last-child {
+  text-align: right;
+  padding-right: 0;
+}
+
+.doc td:last-child {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .doc .katex {
@@ -252,7 +419,7 @@ footer a:hover {
 }
 
 .doc .katex-display {
-  margin: 1.15rem 0 1.35rem;
+  margin: 1.2rem 0 1.4rem;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -261,22 +428,31 @@ footer {
   margin-top: 3.5rem;
   padding-top: 1rem;
   border-top: 1px solid var(--rule-soft);
-  font-size: 0.92rem;
-  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--dim);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   body {
-    font-size: 18px;
+    font-size: 17px;
   }
-  #space {
-    aspect-ratio: 1 / 1;
+  .view {
+    height: 62svh;
   }
-  .controls {
-    gap: 0.45rem 1.1rem;
+  .title p {
+    display: none;
   }
-  .controls .tally {
-    margin-left: 0;
+  .console {
+    gap: 0.5rem 1.2rem;
+  }
+  .dial {
+    min-width: 9rem;
+  }
+  .readout {
     width: 100%;
+  }
+  .readout div {
+    min-width: 0;
   }
 }

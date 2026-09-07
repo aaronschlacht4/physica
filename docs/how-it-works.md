@@ -1,89 +1,90 @@
 # How it works
 
-Everything on the plate is a body with a mass, a position and a velocity. The star sits in the middle with a large mass; each planet you throw is a smaller body. The only rule is Newton's law of gravitation, applied between every pair of bodies, 240 times per second.
+There is no model of a black hole in this page, and no texture of a glowing ring. There is a rule for how light moves when spacetime is curved, applied to about a million photons, thirty times a second. Everything you see above falls out of that rule.
 
-## Gravity
+Each pixel asks one question: if a photon arrived here, where did it come from? So a ray is fired from the camera and followed **backwards** until it does one of three things. It crosses the horizon and is never seen again, which paints the pixel black. It lands on the accretion disk, which paints the pixel the colour of the gas at that spot. Or it escapes, and the pixel shows whatever star lies in the direction the ray was finally travelling. Nothing is drawn in front of anything else; the picture is assembled entirely out of where light comes from.
 
-The acceleration of body $i$ due to body $j$ is
+## The rule light obeys
 
-$$
-\mathbf{a}_i = G\,m_j\,\frac{\mathbf{r}_j - \mathbf{r}_i}{|\mathbf{r}_j - \mathbf{r}_i|^3}
-$$
-
-and each body feels the sum of these over all the others. The units are pixels and seconds with $G = 1$, and the star's mass is chosen so that a planet a couple of hundred pixels out takes a few seconds to go round. The star is not nailed down: it feels the planets too, so a heavy planet makes it wobble, and the whole system slowly drifts if you keep throwing things in one direction.
-
-## Stepping time
-
-The positions and velocities are advanced with velocity Verlet:
+Outside a non-rotating black hole of mass $M$, spacetime is Schwarzschild's. Photons travel along null geodesics, and for these the textbook result is the orbit equation
 
 $$
-\begin{aligned}
-\mathbf{v}_{n+\frac12} &= \mathbf{v}_n + \tfrac{h}{2}\,\mathbf{a}(\mathbf{r}_n) \\
-\mathbf{r}_{n+1} &= \mathbf{r}_n + h\,\mathbf{v}_{n+\frac12} \\
-\mathbf{v}_{n+1} &= \mathbf{v}_{n+\frac12} + \tfrac{h}{2}\,\mathbf{a}(\mathbf{r}_{n+1})
-\end{aligned}
+\frac{d^2u}{d\varphi^2} + u = 3M u^2, \qquad u = \frac{1}{r}
 $$
 
-with a fixed step of $h = 1/240$ s. This is only slightly more work than the obvious method (move, then update the velocity with the old acceleration), but it makes a big difference. The obvious method adds a little energy every step, so orbits spiral outward. Verlet is symplectic: its energy error stays inside a small band forever instead of growing. That is why an orbit here stays the same size for minutes.
+It is compact and it is where the physics lives: drop the term on the right and you have a straight line in polar coordinates, so that one term is the whole of gravitational lensing. But it is written in the photon's own orbital plane, in terms of the angle swept around the hole, and that makes it useless for a ray aimed straight at the centre. Such a ray sweeps no angle at all, and $du/d\varphi$ runs away to infinity. In a renderer that is a column of broken pixels through the middle of the image.
 
-The reading beneath the plate is the check on this. It compares the total energy, kinetic plus potential, with what it was the last time you added or removed a body. With Verlet it wobbles in the fourth decimal place and comes back.
-
-## Softening
-
-Two point masses that pass very close feel an enormous force, and no fixed step can follow it. To keep that from throwing planets off the plate, the distance in the force law is replaced by $\sqrt{r^2 + \varepsilon^2}$ with $\varepsilon$ set to 6 pixels. Far apart, nothing changes; closer than a few pixels, the force stops growing. The energy readout uses the same softened potential, so it stays consistent.
-
-## The curve you see while aiming
-
-The blue curve drawn while you drag is not a guess, and it is not the simulation run ahead in fast forward. It is the orbit itself, solved in closed form. Blue is used for it and for nothing else on the page: black ink is what has happened, and blue is what has only been worked out.
-
-Around a single mass, a body's path is always a conic section with that mass at one focus: a circle, an ellipse, a parabola or a hyperbola, and nothing else. So the entire orbit follows from where the planet is and how fast it is going at the moment of release. From the position $\mathbf{r}$ and velocity $\mathbf{v}$ relative to the star, with $\mu = G(M + m)$, the energy per unit mass is
+So the same geodesic is rewritten as a central force in ordinary Cartesian coordinates. Comparing the orbit equation with the Binet equation for a central force gives
 
 $$
-\varepsilon = \frac{v^2}{2} - \frac{\mu}{r}
+\mathbf{a} = -\,3M\,\frac{h^2\,\mathbf{r}}{|\mathbf{r}|^5}, \qquad h = |\mathbf{r} \times \mathbf{v}|
 $$
 
-Its sign settles the question immediately. Negative and the orbit closes; zero or positive and the planet never comes back. When it does close, the size of the ellipse is
+with $h$, the angular momentum, constant along the path. This is exact, not an approximation of the orbit equation. It is also better behaved: a ray fired straight at the hole has $h = 0$, feels no force at all, and travels in a perfectly straight line into the horizon, which is precisely right.
+
+Both the page and its tests use this one expression. On the graphics card it is four lines of shader; in the test suite the same law is integrated on the processor and checked against results that were known long before anybody could render them.
+
+## Checking it against known answers
+
+A pretty picture is not evidence. The integrator is held against four things general relativity says independently.
+
+| what | expected | 
+| --- | --- |
+| weak-field deflection | $4M/b$, Einstein's 1915 result |
+| next two orders | $+\,15\pi M^2/4b^2 + 128M^3/3b^3$ |
+| photon sphere | a circular light orbit at exactly $r = 3M$ |
+| capture threshold | $b = 3\sqrt{3}\,M$ |
+
+It passes all four. The deflection agrees with the three-term expansion to seven digits at $b = 1000M$, and the answer does not move when the step size is cut fourfold, so the integration has genuinely converged rather than landing on the right number by luck.
+
+The photon sphere test is the one worth watching. Light really can circle a black hole at $r = 3M$, and the integrator holds a photon there to six decimal places for more than a full orbit. Then it loses it, and that is correct too: the orbit is a ridge, not a valley, so any disturbance grows until the photon spirals away. If it were stable, a black hole would wear a permanent bright halo.
+
+## Why the shadow is bigger than the hole
+
+The dark patch is not the horizon. Turn on **Measure** and you get two circles: the shadow, and the horizon drawn at the angle it would cover if light travelled in straight lines. The shadow is larger by a factor of
 
 $$
-a = -\frac{\mu}{2\varepsilon}
+\frac{3\sqrt{3}M}{2M} = \frac{\sqrt{27}}{2} \approx 2.6
 $$
 
-which depends only on the speed and the distance, not on the direction. The shape and orientation come from the eccentricity vector, which points from the star toward the closest point of the orbit and has length equal to the eccentricity:
+The reason is that a photon does not have to hit the horizon to be lost. Anything aimed inside an impact parameter of $3\sqrt{3}M$ spirals in, even though a straight line would have missed. The hole captures a disc of sky far wider than itself, and the edge of that disc is what you see.
+
+The edge is sharp because of the unstable orbit. Rays passing just outside the critical parameter loop the hole once, twice, more, before struggling free, so the brightness piles up into an exceedingly thin ring right at the boundary. Rays just inside never come back.
+
+## The disk
+
+The accretion disk is a ring of gas between the innermost stable circular orbit at $r = 6M$ and an outer edge you can move. Below $6M$ there is no stable orbit for matter, so that is where the disk must stop.
+
+Emission follows the standard thin-disk profile, falling roughly as $r^{-3}$ with the inner rim damped, so the disk is brightest just outside its inner edge. Being a blackbody, its temperature goes as the fourth root of the flux, which is why the inside runs white and the outside runs orange.
+
+What reaches the camera is not what was emitted. Two shifts are applied, and between them they account for almost everything odd about the picture.
+
+**Gravitational redshift.** Light climbing out of the well loses energy, by a factor $\sqrt{1 - 2M/r}$. Close in, this is severe.
+
+**Doppler shift.** The gas is not drifting; it is orbiting at a serious fraction of light speed. A static observer at radius $r$ measures the orbital speed as
 
 $$
-\mathbf{e} = \frac{(v^2 - \mu/r)\,\mathbf{r} - (\mathbf{r}\cdot\mathbf{v})\,\mathbf{v}}{\mu}
+v = \sqrt{\frac{M}{r - 2M}}
 $$
 
-With $a$, $e$ and that direction, the ellipse is fully determined, so the whole thing is drawn in one stroke. The period follows from Kepler's third law,
+which is half the speed of light at the innermost stable orbit and reaches light speed at the photon sphere. Material sweeping toward you is blueshifted and beamed forward; material sweeping away is reddened and dimmed.
 
-$$
-T = 2\pi\sqrt{\frac{a^3}{\mu}}
-$$
+Specific intensity is not invariant, but $I_\nu/\nu^3$ is, so the observed brightness goes as the **fourth power** of the combined shift. A modest velocity therefore produces a violent difference in brightness. Switch **Beaming** off and the disk turns evenly bright, which is what it would look like if the gas sat still. Switch it back on and one side floods while the other sinks. That asymmetry is the single most reliable sign that you are looking at something orbiting a black hole rather than a picture of a ring.
 
-and that is the number shown next to the planet as you aim. Throw it and count: the planet comes back when the label said it would.
+## What you are looking at when you look above the shadow
 
-This is exact when the star is the only thing pulling, which is the usual case, since a thrown planet is at most a fifth of the star's mass and the others are far lighter still. With several planets in play the drawn ellipse is a very good approximation rather than the truth, and you can watch the real path drift off it over a few orbits. When the throw escapes, there is no closed curve to draw, so the path is integrated forward instead and stops where it would hit something.
+At a shallow angle the disk appears to pass over the top of the hole. It does not. You are seeing the **far side of the disk**, behind the black hole, with its light bent up and over toward you. The underside arc beneath the shadow is the same trick the other way round. A flat disk, viewed nearly edge-on, appears wrapped around the hole in both directions, because there is no longer any such thing as a straight line between it and your eye.
 
-## The ink
+Look closer to the shadow's edge and there is a second, thinner copy of the whole disk, squeezed against the boundary. That is light that went around once before leaving. In principle there is an infinite stack of these, each thinner and fainter than the last.
 
-Each planet lays down a faint mark between where it was last frame and where it is now, and the marks are never taken back. A path travelled again and again darkens, the way a long exposure does.
+## Running it
 
-That makes the plate a record of time rather than of position. Since every frame contributes the same amount of ink to a shorter or longer piece of the path depending on how fast the planet is going, the darkness at any point is a measure of how long the planet spends there. So an elliptical orbit comes out palest at the end nearest the star, where the planet whips through, and darkest at the far end, where it dawdles.
+Every pixel integrates its own path, which is far too much work for a processor and almost nothing for a graphics card, since each pixel is independent. The whole thing is one fragment shader: a full-screen triangle, and a loop of fourth-order Runge–Kutta per fragment with the step scaled to the current radius, fine where the path bends and coarse where it does not.
 
-That is Kepler's second law, drawing itself. A planet sweeps out equal areas in equal times, so it must move fastest when it is closest, and the ink is thin exactly where the speed is high. Leave a lopsided orbit running for a minute and the difference between the two ends of the ellipse is plain.
+The page starts at half resolution, measures its own frame rate, and moves the resolution up or down to stay smooth, which is reported at the bottom of the console. On a slow machine the picture softens rather than stalling.
 
-You will also see a single orbit come out as a band of several fine lines rather than one. That is real: the planets pull on each other, so an orbit turns slowly in its own plane instead of retracing itself exactly. The band is precession, drawn.
+## What this leaves out
 
-## Collisions
+The hole does not rotate. A real one almost certainly does, which drags spacetime around with it, makes the shadow asymmetric, and moves the innermost stable orbit; that is the Kerr metric and a considerably harder problem. The disk is infinitely thin, perfectly opaque, and does not emit from within its own volume. The colour ramp stands in for a blackbody spectrum rather than integrating one. Light is not followed after it strikes the disk, so there is no returning radiation. And the star field is invented rather than a real catalogue, though it is lensed exactly as a real one would be.
 
-Two bodies that overlap merge into one. The new body gets the combined mass and the mass-weighted average velocity, so momentum is conserved. Energy is not, just as in a real inelastic collision, and the readout shows the drop. Anything that flies well off the plate is removed.
-
-## Things to try
-
-- Aim sideways, at right angles to the star, and lengthen the drag slowly. The ellipse swells and its far end swings around until, at $\sqrt{2}$ times circular speed, it stops closing altogether.
-- Watch the label rather than the curve. Find the throw that gives a five second orbit, let go, and count it out.
-- Turn the mass up and throw a heavy planet. The star is not nailed down, so it starts to wobble, and with several planets in play the drawn ellipse stops matching what actually happens.
-- Aim straight at the star. There is no orbit to draw, so you get the path instead, ending where it lands.
-- Throw one very lopsided orbit and leave it for a minute, then look at the two ends of the ellipse. The far end is visibly darker, because that is where the planet is slowest.
-
-Reference: Feynman, *Lectures on Physics* Vol. I, chapter 9, which works out planetary motion numerically by hand, and the [Wikipedia article on Verlet integration](https://en.wikipedia.org/wiki/Verlet_integration).
+Reference: J.-P. Luminet, "Image of a spherical black hole with thin accretion disk", *Astronomy and Astrophysics* **75**, 228 (1979), which produced the first such picture by hand; and the Event Horizon Telescope Collaboration's 2019 image of M87\*.

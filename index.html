@@ -2,50 +2,70 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Physica – a plate of orbits</title>
-    <meta name="description" content="Throw a planet at a star and it inks its orbit onto the page. The whole ellipse is drawn before you let go." />
-    <meta name="theme-color" content="#e9e6dc" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23e9e6dc'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23191712' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%23191712'/%3E%3C/svg%3E" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>The Shadow of a Black Hole</title>
+    <meta name="description" content="Every pixel is a photon traced backwards along a null geodesic through Schwarzschild spacetime, bending around a black hole and landing on an accretion disk or the stars behind it." />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23ff9d4a' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='6.5' fill='%23000'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div class="page">
-      <header class="masthead">
-        <h1>Physica</h1>
-        <p>A plate of orbits, drawn as they happen.</p>
+    <section class="view" id="view">
+      <canvas id="gl"></canvas>
+      <canvas id="overlay" aria-hidden="true"></canvas>
+
+      <header class="title">
+        <h1>The Shadow of a Black&nbsp;Hole</h1>
+        <p>Every pixel is a photon, traced backwards through curved spacetime. Drag to move around it.</p>
       </header>
 
-      <figure class="plate">
-        <div class="frame">
-          <canvas id="space" aria-label="A star with planets orbiting it, each inking its path. Drag to throw a new planet."></canvas>
-        </div>
+      <noscript class="fallback"><p>This page renders a black hole with WebGL and needs JavaScript switched on.</p></noscript>
+      <div class="fallback" id="fallback" hidden></div>
+    </section>
 
-        <figcaption>
-          <p class="legend">
-            Drag anywhere within the plate to throw a planet. The blue line is the orbit it will follow, worked out
-            before you let go; the ink behind each planet is where it has already been.
-          </p>
-          <div class="controls">
-            <span class="control">
-              <label for="mass">Mass</label>
-              <input id="mass" type="range" min="0" max="1" step="0.001" value="0.37" />
-              <span id="mass-value" class="reading"></span>
-            </span>
-            <label class="control check"><input id="ink" type="checkbox" checked /> Ink</label>
-            <button id="pause" type="button">Pause</button>
-            <button id="clear" type="button">Wipe the plate</button>
-            <span id="status" class="reading tally"></span>
-          </div>
-        </figcaption>
-      </figure>
+    <div class="console">
+      <div class="dials">
+        <label class="dial">
+          <span class="name">Inclination <span class="hint">angle above the disk</span></span>
+          <output id="incl-out" class="num"></output>
+          <input type="range" id="incl" min="-89" max="89" step="1" value="12" />
+          <span class="ends"><span>below</span><span>edge-on</span><span>above</span></span>
+        </label>
+        <label class="dial">
+          <span class="name">Distance <span class="hint">camera radius</span></span>
+          <output id="dist-out" class="num"></output>
+          <input type="range" id="dist" min="12" max="80" step="0.5" value="42" />
+          <span class="ends"><span>12 M</span><span>80 M</span></span>
+        </label>
+        <label class="dial">
+          <span class="name">Disk outer edge <span class="hint">inner edge fixed at 6 M</span></span>
+          <output id="router-out" class="num"></output>
+          <input type="range" id="router" min="9" max="28" step="0.5" value="15" />
+          <span class="ends"><span>9 M</span><span>28 M</span></span>
+        </label>
+      </div>
 
-      <article id="how" class="doc"></article>
+      <fieldset class="toggles">
+        <legend>Show</legend>
+        <label class="check"><input type="checkbox" id="disk" checked /> Accretion disk</label>
+        <label class="check"><input type="checkbox" id="beaming" checked /> Doppler beaming</label>
+        <label class="check"><input type="checkbox" id="stars" checked /> Star field</label>
+        <label class="check"><input type="checkbox" id="markers" /> Measurements</label>
+      </fieldset>
 
-      <footer>Made by Aaron Schlacht. <a href="https://github.com/aaronschlacht4/physica">Source on GitHub</a>.</footer>
+      <dl class="readout">
+        <div><dt>Shadow, across the sky</dt><dd id="r-shadow">—</dd></div>
+        <div><dt>Shadow ÷ horizon</dt><dd id="r-ratio">—</dd></div>
+        <div><dt>Render</dt><dd id="r-perf">—</dd></div>
+      </dl>
     </div>
+
+    <main>
+      <article id="how" class="doc"></article>
+      <footer>Made by Aaron Schlacht. <a href="https://github.com/aaronschlacht4/physica">Source on GitHub</a>.</footer>
+    </main>
 
     <script type="module" src="/src/main.ts"></script>
   </body>
